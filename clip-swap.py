@@ -5,6 +5,7 @@ from xml.etree.ElementTree import ParseError, Element
 import argparse
 from argparse import RawDescriptionHelpFormatter
 from urllib.parse import urlparse
+from typing import List
 
 
 def get_yn(prompt: str) -> str:
@@ -19,7 +20,7 @@ def get_yn(prompt: str) -> str:
     return False
 
 
-def run_replacement(project_xml: Element, replacment_filenames: list[str],
+def run_replacement(project_xml: Element, replacment_filenames: List[str],
                     replacments_dir: str):
     """Main replacement loop"""
 
@@ -73,7 +74,7 @@ def run_replacement(project_xml: Element, replacment_filenames: list[str],
     return project_xml
 
 
-def choose_replacement(current_name: str, choices: list[str]) -> str:
+def choose_replacement(current_name: str, choices: List[str]) -> str:
     """Choose a replacement from choices list"""
 
     for choice in choices:
