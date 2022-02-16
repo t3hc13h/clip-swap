@@ -28,12 +28,12 @@ def run_replacement(project_xml: Element, replacment_filenames: list[str],
         if clip_el.find('pixelaspectratio') is None:
             continue
         file_el = clip_el.find('file')
-        if not file_el:
+        if file_el is None:
             continue
         name_element = file_el.find('name')
         fileurl_element = file_el.find('pathurl')
-        if not fileurl_element or not fileurl_element.text:
-            print('File element malformed')
+        if fileurl_element is None or not fileurl_element.text:
+            print(f'File element {fileurl_element.text} malformed')
             exit(1)
         fileurl = fileurl_element.text
 
@@ -52,7 +52,9 @@ def run_replacement(project_xml: Element, replacment_filenames: list[str],
         if not get_yn(f'Replace {name} with {candidate}?'):
             print('Skipping')
             continue
-
+        # Assuming we won't want to update multiple
+        # clips with the same file
+        replacment_filenames.remove(candidate)
         fullpath = os.path.realpath(os.path.join(replacments_dir, candidate))
         # Update clip name if needed
         clip_name_el = clip_el.find('name')
@@ -131,7 +133,7 @@ because they share the prefix 'petropics-873123292'""",
         output_filename = args.output
     else:
         output_name, ext = os.path.splitext(project_file)
-        output_filename + '_replaced' + ext
+        output_filename = output_name + '_replaced' + ext
 
     write_updated_file(root, output_filename)
 
