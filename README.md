@@ -11,7 +11,7 @@ curl -O https://github.com/t3hc13h/clip-swap/blob/7deef4123152055e33d46bc018c731
 chmod +x ./clip-switch.py
 ```
 
-### Usage
+#### Usage
 ```shell
 $ ./clip-swap.py --help
 usage: clip-switch.py [-h] --finals-dir FINALS_DIR [--output OUTPUT] project
