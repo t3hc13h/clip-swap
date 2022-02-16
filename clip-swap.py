@@ -21,6 +21,8 @@ def get_yn(prompt: str) -> str:
 
 def run_replacement(project_xml: Element, replacment_filenames: list[str],
                     replacments_dir: str):
+    """Main replacement loop"""
+
     for clip_el in project_xml.findall('.//track/clipitem'):
         if not clip_el:
             continue
@@ -72,9 +74,8 @@ def run_replacement(project_xml: Element, replacment_filenames: list[str],
 
 
 def choose_replacement(current_name: str, choices: list[str]) -> str:
-    """
-    Choose a replacement from the choi
-    """
+    """Choose a replacement from choices list"""
+
     for choice in choices:
         # Everything is in the same dir
         if choice == current_name:
@@ -83,10 +84,11 @@ def choose_replacement(current_name: str, choices: list[str]) -> str:
         choice_dir, choice_name = os.path.split(name)
         if current_name.lower().startswith(choice_name.lower()):
             return choice
-    # TODO: Get user feedback about lack of choice?
 
 
 def write_updated_file(xml: Element, output_filename: str):
+    """Write the XML element out to the output file"""
+
     with open(output_filename, 'wb') as output_file:
         output_file.write('<?xml version="1.0" encoding="UTF-8"?>\n \
                 <!DOCTYPE xmeml>'.encode('UTF-8'))
@@ -134,6 +136,10 @@ because they share the prefix 'petropics-873123292'""",
     else:
         output_name, ext = os.path.splitext(project_file)
         output_filename = output_name + '_replaced' + ext
+
+    if os.path.isfile(output_filename):
+        if not get_yn("Output file already exists. Overwrite?"):
+            exit(1)
 
     write_updated_file(root, output_filename)
 
