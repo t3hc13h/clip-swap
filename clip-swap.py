@@ -114,9 +114,12 @@ because they share the prefix 'petropics-873123292'""",
     args = parser.parse_args()
 
     project_file = os.path.realpath(args.project)
-    replacments_dir = args.finals_dir
+    replacments_dir = os.path.realpath(args.finals_dir)
     if not os.path.isfile(project_file):
         print(f'Cannot find project file {project_file}')
+        exit(1)
+    if not os.path.isdir(replacments_dir):
+        print(f'Finals directory {replacments_dir} not found')
         exit(1)
     replacment_filenames = os.listdir(replacments_dir)
     if not len(replacment_filenames):
@@ -145,4 +148,7 @@ because they share the prefix 'petropics-873123292'""",
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
