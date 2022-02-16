@@ -7,16 +7,16 @@ A small utility to replace clips in a Final Cut Pro XML.
 Nothing fancy, just put it where ya like and make it executable.
 
 ```shell
-curl -O https://github.com/t3hc13h/clip-swap/blob/7deef4123152055e33d46bc018c731d5b0ff0337/clip-switch.py
-chmod +x ./clip-switch.py
+curl -O https://raw.githubusercontent.com/t3hc13h/clip-swap/main/clip-swap.py
+chmod +x ./clip-swap.py
 ```
 
 #### Usage
 ```shell
 $ ./clip-swap.py --help
-usage: clip-switch.py [-h] --finals-dir FINALS_DIR [--output OUTPUT] project
+usage: clip-swap.py [-h] --finals-dir FINALS_DIR [--output OUTPUT] project
 
-Reads a Final Cut Pro XML formatted project file and switches out existing clips with those found in the provided directory.
+Reads a Final Cut Pro XML formatted project file and swaps out existing clips with those found in the provided directory.
 
 Replacements are matched by prefix, case and extension are ignored.
 
