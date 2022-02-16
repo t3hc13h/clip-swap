@@ -121,8 +121,8 @@ because they share the prefix 'petropics-873123292'""",
     print(f'Opening project: {project_file}')
     try:
         root = ET.parse(project_file)
-    except ParseError:
-        print('Invalid project file')
+    except ParseError as pe:
+        print(f'Invalid project file: {pe.msg}')
         exit(1)
 
     root = run_replacement(root, replacment_filenames, replacments_dir)
