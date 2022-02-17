@@ -52,7 +52,7 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
 
         url = urlparse(fileurl)
 
-        if not get_yn(f'Replace {name} with {candidate}?'):
+        if not get_yn(f'Replace {name} with {candidate}?: '):
             print('Skipping')
             continue
         # Assuming we won't want to update multiple
@@ -143,7 +143,7 @@ because they share the prefix 'petropics-873123292'""",
         output_filename = output_name + '_replaced' + ext
 
     if os.path.isfile(output_filename):
-        if not get_yn("Output file already exists. Overwrite?"):
+        if not get_yn("Output file already exists. Overwrite?: "):
             exit(1)
 
     write_updated_file(root, output_filename)
