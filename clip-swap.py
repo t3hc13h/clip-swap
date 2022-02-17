@@ -69,8 +69,9 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
             print(f'Somehow I created a bad filepath, \'{fullpath}\' should \
                     exist but does\'t')
             exit(1)
-        # Update the file/pathurl element
-        fileurl_element.text = url.scheme + '://' + fullpath
+        # Update the file/pathurl element.
+        # Replace the url path to maintain the scheme and host
+        fileurl_element.text = url._replace(path=fullpath).geturl()
     return project_xml
 
 
