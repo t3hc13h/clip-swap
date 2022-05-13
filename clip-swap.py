@@ -21,7 +21,8 @@ def get_yn(prompt: str) -> str:
 
 
 def run_replacement(project_xml: Element, replacment_filenames: List[str],
-                    replacments_dir: str):
+                    replacments_dir: str,
+                    be_verbose: bool):
     """Main replacement loop"""
 
     for clip_el in project_xml.findall('.//track/clipitem'):
@@ -52,7 +53,7 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
 
         url = urlparse(fileurl)
 
-        if not get_yn(f'Replace {name} with {candidate}?: '):
+        if be_verbose and not get_yn(f'Replace {name} with {candidate}?: '):
             print('Skipping')
             continue
         # Assuming we won't want to update multiple
@@ -110,11 +111,12 @@ Example:
 because they share the prefix 'petropics-873123292'""",
         formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument('--finals-dir', required=True)
+    parser.add_argument('-v', default=False, action='store_true', help='Verbose mode, will prompt for each file')
     parser.add_argument('--output', type=str, help='File name for output file')
     parser.add_argument('project',
                         help='Final Cut Pro XML format project file')
     args = parser.parse_args()
-
+    be_verbose = args.v
     project_file = os.path.realpath(args.project)
     replacments_dir = os.path.realpath(args.finals_dir)
     if not os.path.isfile(project_file):
@@ -134,7 +136,7 @@ because they share the prefix 'petropics-873123292'""",
         print(f'Invalid project file: {pe.msg}')
         exit(1)
 
-    root = run_replacement(root, replacment_filenames, replacments_dir)
+    root = run_replacement(root, replacment_filenames, replacments_dir, be_verbose)
 
     if args.output:
         output_filename = args.output
