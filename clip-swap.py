@@ -62,7 +62,7 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
         # Update clip name if needed
         clip_name_el = clip_el.find('name')
         if clip_name_el.text == name_element.text:
-            clip_name_el.name = candidate
+            clip_name_el.text = candidate
         # Update the file/name element
         name_element.text = candidate
         if not os.path.isfile(fullpath):
