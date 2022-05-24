@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from typing import List
 
 
-def get_yn(prompt: str) -> str:
+def get_yn(prompt: str) -> bool:
     """Get a yes or no response from the user"""
 
     resp = input(prompt).strip().lower()
@@ -20,9 +20,49 @@ def get_yn(prompt: str) -> str:
     return False
 
 
-def run_replacement(project_xml: Element, replacment_filenames: List[str],
-                    replacments_dir: str):
-    """Main replacement loop"""
+def run_prempro_replacement(project_xml: Element, replacement_filenames: List[str],
+                            replacements_dir: str,
+                            project_path: str):
+    """Main Final Cut Pro replacement loop"""
+    for media_el in project_xml.findall('.//Media'):
+        title_el = media_el.find('Title')
+
+        name = title_el.text
+        candidate = choose_replacement(name, replacement_filenames)
+        if not candidate:
+            print(f'No replacement found for {name}')
+            continue
+        fullpath = os.path.realpath(os.path.join(replacements_dir, candidate))
+        file_path_el = media_el.find('FilePath')
+        file_path_el.text = fullpath
+        candidate_rel_path = os.path.relpath(fullpath, project_path)
+        rel_path_el = media_el.find('RelativePath')
+        rel_path_el.text = candidate_rel_path
+        actual_file_path_el = media_el.find('ActualMediaFilePath')
+        actual_file_path_el.text = fullpath
+
+        for clip_project_name_el in project_xml.findall(f".//ClipProjectItem/ProjectItem/Name(text() = '{name}')"):
+            clip_project_name_el.text = name
+
+        for master_clip_name_el in project_xml.findall(f".//MasterClip/Name(text() = '{name}')"):
+            master_clip_name_el.text = name
+
+        for clip_logging_info_el in project_xml.findall(f".//ClipLoggingInfo/ClipName(text() = '{name}')"):
+            clip_logging_info_el.text = name
+
+        for sub_clip_el in project_xml.findall(f".//SubClip/Name(text() = '{name})"):
+            sub_clip_el.text = name
+
+    # Media RelativePath FilePath Title ActualMediaFilePath
+    # ClipProjectItem/ProjectItem/Name
+    # MasterClip/Name
+    # ClipLoggingInfo/ClipName
+    # SubClip/Name
+
+
+def run_fcp_replacement(project_xml: Element, replacement_filenames: List[str],
+                        replacements_dir: str):
+    """Main Final Cut Pro replacement loop"""
 
     for clip_el in project_xml.findall('.//track/clipitem'):
         if not clip_el:
@@ -45,7 +85,7 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
             print('Clip name is missing, skipping')
             continue
 
-        candidate = choose_replacement(name, replacment_filenames)
+        candidate = choose_replacement(name, replacement_filenames)
         if not candidate:
             print(f'No replacement found for {name}')
             continue
@@ -57,8 +97,8 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
             continue
         # Assuming we won't want to update multiple
         # clips with the same file
-        replacment_filenames.remove(candidate)
-        fullpath = os.path.realpath(os.path.join(replacments_dir, candidate))
+        replacement_filenames.remove(candidate)
+        fullpath = os.path.realpath(os.path.join(replacements_dir, candidate))
         # Update clip name if needed
         clip_name_el = clip_el.find('name')
         if clip_name_el.text == name_element.text:
@@ -67,7 +107,7 @@ def run_replacement(project_xml: Element, replacment_filenames: List[str],
         name_element.text = candidate
         if not os.path.isfile(fullpath):
             print(f'Somehow I created a bad filepath, \'{fullpath}\' should \
-                    exist but does\'t')
+                    exist but doesn\'t')
             exit(1)
         # Update the file/pathurl element.
         # Replace the url path to maintain the scheme and host
@@ -123,8 +163,8 @@ because they share the prefix 'petropics-873123292'""",
     if not os.path.isdir(replacments_dir):
         print(f'Finals directory {replacments_dir} not found')
         exit(1)
-    replacment_filenames = os.listdir(replacments_dir)
-    if not len(replacment_filenames):
+    replacement_filenames = os.listdir(replacments_dir)
+    if not len(replacement_filenames):
         print(f'No final files found in {replacments_dir}')
         exit(1)
     print(f'Opening project: {project_file}')
@@ -134,7 +174,9 @@ because they share the prefix 'petropics-873123292'""",
         print(f'Invalid project file: {pe.msg}')
         exit(1)
 
-    root = run_replacement(root, replacment_filenames, replacments_dir)
+    root = run_prempro_replacement(root, replacement_filenames, replacments_dir,
+                                   os.path.dirname(project_file))
+#    root = run_fcp_replacement(root, replacement_filenames, replacments_dir)
 
     if args.output:
         output_filename = args.output
