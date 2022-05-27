@@ -34,9 +34,10 @@ def run_prempro_replacement(project_xml: Element, replacement_filenames: List[st
         name = title_el.text
         candidate = choose_replacement(name, replacement_filenames)
         if not candidate:
-            logging.debug(f'No replacement found for {name}')
+            logging.debug(f'No replacement found for {name}, skipping')
             continue
-        logging.debug(f'Replacement {candidate} chosen for {name}')
+        logging.debug(f'Replacing {name} with {candidate}')
+        title_el.text = candidate
         fullpath = os.path.realpath(os.path.join(replacements_dir, candidate))
         candidate_rel_path = os.path.relpath(fullpath, project_path)
         logging.debug(f'Replacement full path {fullpath}')
@@ -81,11 +82,6 @@ def run_prempro_replacement(project_xml: Element, replacement_filenames: List[st
                 sub_clip_el.text = candidate
 
     return project_xml
-    # Media RelativePath FilePath Title ActualMediaFilePath
-    # ClipProjectItem/ProjectItem/Name
-    # MasterClip/Name
-    # ClipLoggingInfo/ClipName
-    # SubClip/Name
 
 
 def run_fcp_replacement(project_xml: Element, replacement_filenames: List[str],
@@ -104,7 +100,7 @@ def run_fcp_replacement(project_xml: Element, replacement_filenames: List[str],
         name_element = file_el.find('name')
         fileurl_element = file_el.find('pathurl')
         if fileurl_element is None or not fileurl_element.text:
-            logging.error(f'File element {fileurl_element.text} malformed')
+            logging.error(f'File element malformed')
             exit(1)
         fileurl = fileurl_element.text
 
@@ -156,12 +152,19 @@ def choose_replacement(current_name: str, choices: List[str]) -> str:
             return choice
 
 
-def write_updated_file(xml: Element, output_filename: str):
-    """Write the XML element out to the output file"""
+def write_prproj_file(xml: Element, output_filename: str, compressed: bool):
+    """Write the updated Premiere Pro XML to the output file"""
+    _open = gzip.open if compressed else open
+    with _open(output_filename, 'wb') as output_file:
+        output_file.write('<?xml version="1.0" encoding="UTF-8" ?>\n'.encode('UTF-8'))
+        xml.write(output_file)
 
+
+def write_fcp_file(xml: Element, output_filename: str, compressed: bool):
+    """Write the update Final Cut Pro XML to the output file"""
     with open(output_filename, 'wb') as output_file:
         output_file.write('<?xml version="1.0" encoding="UTF-8"?>\n \
-                <!DOCTYPE xmeml>'.encode('UTF-8'))
+                <!DOCTYPE xmeml>\n'.encode('UTF-8'))
         xml.write(output_file)
 
 
@@ -203,14 +206,22 @@ because they share the prefix 'petropics-873123292'""",
         exit(1)
     print(f'Opening project: {project_file}')
     try:
-        root = ET.parse(project_file)
+        project_file_obj = gzip.open(project_file)
+        # Need to read something to test the file
+        project_file_obj.peek(1)
+        compressed = True
+    except gzip.BadGzipFile:
+        # Woops, not zipped just try reading it
+        project_file_obj = open(project_file)
+        compressed = False
+    try:
+        project_tree = ET.parse(project_file_obj)
     except ParseError as pe:
         print(f'Invalid project file: {pe.msg}')
         exit(1)
-
-    root = run_prempro_replacement(root, replacement_filenames, replacments_dir,
-                                   os.path.dirname(project_file))
-#    root = run_fcp_replacement(root, replacement_filenames, replacments_dir)
+    finally:
+        if project_file_obj:
+            project_file_obj.close()
 
     if args.output:
         output_filename = args.output
@@ -222,7 +233,18 @@ because they share the prefix 'petropics-873123292'""",
         if not get_yn("Output file already exists. Overwrite?: "):
             exit(1)
 
-    write_updated_file(root, output_filename)
+    root = project_tree.getroot()
+    logging.info(f'Writing updated file: {output_filename}')
+    if root.tag == 'PremiereData':
+        run_prempro_replacement(root, replacement_filenames, replacments_dir,
+                                os.path.dirname(project_file))
+        write_prproj_file(project_tree, output_filename, compressed)
+    elif root.tag == 'xmeml':
+        run_fcp_replacement(root, replacement_filenames, replacments_dir)
+        write_fcp_file(project_tree, output_filename)
+    else:
+        print('Unrecognized file format :(')
+
 
 
 if __name__ == '__main__':
