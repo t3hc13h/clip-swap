@@ -6,7 +6,8 @@ import argparse
 from argparse import RawDescriptionHelpFormatter
 from urllib.parse import urlparse
 from typing import List
-
+import logging
+import gzip
 
 def get_yn(prompt: str) -> bool:
     """Get a yes or no response from the user"""
@@ -24,35 +25,62 @@ def run_prempro_replacement(project_xml: Element, replacement_filenames: List[st
                             replacements_dir: str,
                             project_path: str):
     """Main Final Cut Pro replacement loop"""
-    for media_el in project_xml.findall('.//Media'):
+    for media_el in project_xml.findall('./Media'):
         title_el = media_el.find('Title')
+        if title_el is None:
+            logging.info(f'Media element {media_el} has no title, skipping')
+            continue
 
         name = title_el.text
         candidate = choose_replacement(name, replacement_filenames)
         if not candidate:
-            print(f'No replacement found for {name}')
+            logging.debug(f'No replacement found for {name}')
             continue
+        logging.debug(f'Replacement {candidate} chosen for {name}')
         fullpath = os.path.realpath(os.path.join(replacements_dir, candidate))
-        file_path_el = media_el.find('FilePath')
-        file_path_el.text = fullpath
         candidate_rel_path = os.path.relpath(fullpath, project_path)
+        logging.debug(f'Replacement full path {fullpath}')
+        logging.debug(f'Replacement relative path {candidate_rel_path}')
+
+        file_path_el = media_el.find('FilePath')
+        if file_path_el is None:
+            logging.debug(f'FilePath element not found, skipping')
+            continue
+        file_path_el.text = fullpath
+
         rel_path_el = media_el.find('RelativePath')
+        if rel_path_el is None:
+            logging.debug(f'RelativePath element not found, skipping')
+            continue
         rel_path_el.text = candidate_rel_path
+
         actual_file_path_el = media_el.find('ActualMediaFilePath')
+        if actual_file_path_el is None:
+            logging.debug(f'ActualMediaFilePath element not found, skipping')
+            continue
         actual_file_path_el.text = fullpath
 
-        for clip_project_name_el in project_xml.findall(f".//ClipProjectItem/ProjectItem/Name(text() = '{name}')"):
-            clip_project_name_el.text = name
+        for clip_project_name_el in project_xml.findall(f".//ClipProjectItem/ProjectItem/Name"):
+            if clip_project_name_el.text == name:
+                logging.debug(f'Updating ProjectItem/Name = {name} with {candidate}')
+                clip_project_name_el.text = candidate
 
-        for master_clip_name_el in project_xml.findall(f".//MasterClip/Name(text() = '{name}')"):
-            master_clip_name_el.text = name
+        for master_clip_name_el in project_xml.findall(f".//MasterClip/Name"):
+            if master_clip_name_el.text == name:
+                logging.debug(f'Updating MasterClip/Name = {name} with {candidate}')
+                master_clip_name_el.text = candidate
 
-        for clip_logging_info_el in project_xml.findall(f".//ClipLoggingInfo/ClipName(text() = '{name}')"):
-            clip_logging_info_el.text = name
+        for clip_logging_info_el in project_xml.findall(f".//ClipLoggingInfo/ClipName"):
+            if clip_logging_info_el.text == name:
+                logging.info(f'Updating ClipName = {name} with {candidate}')
+                clip_logging_info_el.text = candidate
 
-        for sub_clip_el in project_xml.findall(f".//SubClip/Name(text() = '{name})"):
-            sub_clip_el.text = name
+        for sub_clip_el in project_xml.findall(f".//SubClip/Name"):
+            if sub_clip_el.text == name:
+                logging.info(f'Updating SubClip/Name = {name} with {candidate}')
+                sub_clip_el.text = candidate
 
+    return project_xml
     # Media RelativePath FilePath Title ActualMediaFilePath
     # ClipProjectItem/ProjectItem/Name
     # MasterClip/Name
@@ -76,24 +104,24 @@ def run_fcp_replacement(project_xml: Element, replacement_filenames: List[str],
         name_element = file_el.find('name')
         fileurl_element = file_el.find('pathurl')
         if fileurl_element is None or not fileurl_element.text:
-            print(f'File element {fileurl_element.text} malformed')
+            logging.error(f'File element {fileurl_element.text} malformed')
             exit(1)
         fileurl = fileurl_element.text
 
         name = name_element.text
         if not name:
-            print('Clip name is missing, skipping')
+            logging.info('Clip name is missing, skipping')
             continue
 
         candidate = choose_replacement(name, replacement_filenames)
         if not candidate:
-            print(f'No replacement found for {name}')
+            logging.info(f'No replacement found for {name}')
             continue
 
         url = urlparse(fileurl)
 
         if not get_yn(f'Replace {name} with {candidate}?: '):
-            print('Skipping')
+            logging.info('Skipping')
             continue
         # Assuming we won't want to update multiple
         # clips with the same file
@@ -106,7 +134,7 @@ def run_fcp_replacement(project_xml: Element, replacement_filenames: List[str],
         # Update the file/name element
         name_element.text = candidate
         if not os.path.isfile(fullpath):
-            print(f'Somehow I created a bad filepath, \'{fullpath}\' should \
+            logging.error(f'Somehow I created a bad filepath, \'{fullpath}\' should \
                     exist but doesn\'t')
             exit(1)
         # Update the file/pathurl element.
@@ -151,9 +179,15 @@ because they share the prefix 'petropics-873123292'""",
         formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument('--finals-dir', required=True)
     parser.add_argument('--output', type=str, help='File name for output file')
+    parser.add_argument('--log', type=str, help='Log level')
     parser.add_argument('project',
                         help='Final Cut Pro XML format project file')
     args = parser.parse_args()
+    loglevel = args.log
+    numeric_level = getattr(logging, loglevel.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid log level: %s' % loglevel)
+    logging.basicConfig(format='%(message)s', encoding='utf-8', level=numeric_level)
 
     project_file = os.path.realpath(args.project)
     replacments_dir = os.path.realpath(args.finals_dir)
