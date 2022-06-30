@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import os
+import platform
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import ParseError, Element
 import argparse
@@ -8,6 +9,7 @@ from urllib.parse import urlparse
 from typing import List
 import logging
 import gzip
+import subprocess
 
 def get_yn(prompt: str) -> bool:
     """Get a yes or no response from the user"""
@@ -168,6 +170,20 @@ def write_fcp_file(xml: Element, output_filename: str, compressed: bool):
         xml.write(output_file)
 
 
+def is_mac() -> bool:
+    return platform.system() == 'Darwin'
+
+
+def open_mac_choose_dialog(prompt: str, dialog_type='file') -> str:
+    result = subprocess.run(['osascript', '-e', f"""tell application (path to frontmost application as text)
+    set myFile to choose {dialog_type} with prompt {prompt}
+    POSIX path of myFile
+end"""], capture_output=True)
+    if result.returncode == 0:
+        return result.stdout.decode('utf-8')
+    return ""
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="""Reads a Final Cut Pro XML formatted project file and \
@@ -195,11 +211,25 @@ because they share the prefix 'petropics-873123292'""",
     project_file = os.path.realpath(args.project)
     replacements_dir = os.path.realpath(args.finals_dir)
     if not os.path.isfile(project_file):
-        print(f'Cannot find project file {project_file}')
-        exit(1)
+        if is_mac():
+            # try to open a dialog and select a file
+            project_file = open_mac_choose_dialog('Select project file')
+            if not os.path.isfile(project_file):
+                print(f'Invalid project file selected: {project_file}')
+                exit(1)
+        else:
+            print(f'Cannot find project file {project_file}')
+            exit(1)
     if not os.path.isdir(replacements_dir):
-        print(f'Finals directory {replacements_dir} not found')
-        exit(1)
+        if is_mac():
+            # try to open a dialog and select a directory
+            replacements_dir = open_mac_choose_dialog('Select replacements folder', dialog_type='folder')
+            if not os.path.isdir(replacements_dir):
+                print(f'Invalid replacements directory selected: {replacements_dir}')
+                exit(1)
+        else:
+            print(f'Finals directory {replacements_dir} not found')
+            exit(1)
     replacement_filenames = os.listdir(replacements_dir)
     if not len(replacement_filenames):
         print(f'No final files found in {replacements_dir}')
