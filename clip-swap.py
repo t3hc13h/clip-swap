@@ -193,16 +193,16 @@ because they share the prefix 'petropics-873123292'""",
     logging.basicConfig(format='%(message)s', encoding='utf-8', level=numeric_level)
 
     project_file = os.path.realpath(args.project)
-    replacments_dir = os.path.realpath(args.finals_dir)
+    replacements_dir = os.path.realpath(args.finals_dir)
     if not os.path.isfile(project_file):
         print(f'Cannot find project file {project_file}')
         exit(1)
-    if not os.path.isdir(replacments_dir):
-        print(f'Finals directory {replacments_dir} not found')
+    if not os.path.isdir(replacements_dir):
+        print(f'Finals directory {replacements_dir} not found')
         exit(1)
-    replacement_filenames = os.listdir(replacments_dir)
+    replacement_filenames = os.listdir(replacements_dir)
     if not len(replacement_filenames):
-        print(f'No final files found in {replacments_dir}')
+        print(f'No final files found in {replacements_dir}')
         exit(1)
     print(f'Opening project: {project_file}')
     try:
@@ -236,11 +236,11 @@ because they share the prefix 'petropics-873123292'""",
     root = project_tree.getroot()
     logging.info(f'Writing updated file: {output_filename}')
     if root.tag == 'PremiereData':
-        run_prempro_replacement(root, replacement_filenames, replacments_dir,
+        run_prempro_replacement(root, replacement_filenames, replacements_dir,
                                 os.path.dirname(project_file))
         write_prproj_file(project_tree, output_filename, compressed)
     elif root.tag == 'xmeml':
-        run_fcp_replacement(root, replacement_filenames, replacments_dir)
+        run_fcp_replacement(root, replacement_filenames, replacements_dir)
         write_fcp_file(project_tree, output_filename)
     else:
         print('Unrecognized file format :(')
